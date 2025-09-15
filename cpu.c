@@ -203,9 +203,38 @@ int emulateCycle(struct chip8CPU *cpu){
             switch(opcode&0x00FF){
                 case 0x0065:
                     regX = (opcode&0x0F00)>>8;
-                    for(int i = 0;i<regX;i++)
+                    for(int i = 0;i<=regX;i++)
                         cpu->reg[i]=cpu->mem[(cpu->idx)+i];
                     break;
+
+                case 0x0055:
+                    regX = (opcode&0x0F00)>>8;
+                    for(int i = 0;i<=regX;i++)
+                        cpu->mem[(cpu->idx)+i] = cpu->reg[i];
+                    break;
+
+                case 0x0033: //TODO make this instruction suck less
+                    regX = cpu->reg[(opcode&0x0F00)>>8];
+                    regY=regX%10;
+                    cpu->mem[cpu->idx + 2]=regY;
+                    regX-=regY;
+
+                    regY = regX%100 / 10;
+                    cpu->mem[cpu->idx + 1]=regY;
+
+                    regX-=regY;
+
+                    regY = regX%1000 / 100;
+                    cpu->mem[cpu->idx]=regY;
+                    break;
+
+                case 0x001E:
+                    cpu->idx += cpu->reg[(opcode&0x0F00)>>8];
+                    break;
+
+                default:
+                    printf("unhandled instruction 0x%x\n", opcode);
+                    return 0;
 
             }
             break;
