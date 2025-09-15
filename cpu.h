@@ -23,5 +23,7 @@ struct chip8CPU {
     //controller keys
     unsigned char key[16];
 };
-void initCPU(struct chip8CPU *cpu);
-void emulateCycle(struct chip8CPU *cpu);
+
+struct chip8CPU* initCPU();
+int emulateCycle(struct chip8CPU *cpu);
+int loadGame(struct chip8CPU *cpu, char *file);

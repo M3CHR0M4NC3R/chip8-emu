@@ -1,12 +1,12 @@
 #include "cpu.h"
 #include "raylib.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 struct chip8CPU *cpu;
 typedef enum GameScreen { INIT=0, GAMEPLAY } GameScreen;
 
-int main(void)
+int main(int argc, char *argv[])
 {
 
     const int scale = 10;
@@ -19,6 +19,13 @@ int main(void)
 
     SetTargetFPS(60);
     int framesCounter = 0;
+    int cpuInit = 0;
+    int gameInit = 0;
+    struct chip8CPU *cpu = NULL;
+    if (argc<1){
+        printf("You have to specify a file\n");
+        return 1;
+    }
 
     //init controller
     //
@@ -29,24 +36,27 @@ int main(void)
         switch (currentScreen){
         case INIT:
             //init graphics
-                if(framesCounter==0){
-                    cpu = calloc(1, sizeof(struct chip8CPU));
+                if(cpu==NULL){
+                    cpu = initCPU();
+                }else{
+                    if(!loadGame(cpu, argv[1]))
+                        return 1;
                 }
                 framesCounter++;
+
 
 
                 if(framesCounter>=120){
                     currentScreen = GAMEPLAY;
                 }
+            //init game file
             break;
 
         case GAMEPLAY:
         {
-            //put cpu logic here
-            //1 get instruction
-            //2 perform operation
-
-            break;
+            if(emulateCycle(cpu))
+                break;
+            return 1;
         }
         }
         //drawing switch
