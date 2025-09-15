@@ -18,13 +18,30 @@ struct chip8CPU* initCPU(){
     
     return cpu;
 }
+
+void dumpCPU(struct chip8CPU *cpu){
+    printf("pc: %x\n", cpu->pc);
+    printf("idx: %x\n", cpu->idx);
+
+    for(int i=0;i<0xF;i++)
+        printf("register %x: %x\n",i,cpu->reg[i]);
+
+    printf("graphics buffer:");
+    for(int i=0;i<32*64;i++) {
+        if(i%64==0)
+            printf("\n");
+        printf("%d",cpu->pixels[i]);
+    }
+}
+
 int emulateCycle(struct chip8CPU *cpu){
     int pc = cpu->pc;
     int opcode = cpu->mem[pc] << 8 | cpu->mem[pc + 1];
+    int regY,regX;
     //cpu->opcode = opcode;
     //printf("%x %x\n",pc, opcode);
-    if (pc==0x200)
-        opcode = opcode>>8;
+    //if (pc==0x200)
+    //    opcode = opcode>>8;
 
     switch(opcode & 0xF000){
         case 0x0000:
@@ -40,21 +57,99 @@ int emulateCycle(struct chip8CPU *cpu){
             }
         break;
         }
+
+        case 0x1000: //GOTO
+            cpu->pc=opcode&0x0FFF;
+
+            return 1;
+        case 0x2000:
+            cpu->stack[cpu->sp] = pc;
+            cpu->sp++;
+            pc = opcode & 0x0FFF;
+        break;
+
+
+        case 0x3000: //conditional skip next instruction (true)
+            if (cpu->reg[(opcode&0x0F00)>>8]==(opcode&0x00F))
+                cpu->pc+=2;
+            break;
+
+        case 0x4000: //conditional skip next instruction (false)
+            if (!(cpu->reg[(opcode&0x0F00)>>8]==(opcode&0x00F)))
+                cpu->pc+=2;
+            break;
+
+        case 0x5000:
+            regX = (opcode&0x0F00)>>8;
+            regY = (opcode&0x00F0)>>4;
+            if(cpu->reg[regX]==cpu->reg[regY])
+                cpu->pc+=2;
+            break;
+
+        case 0x9000:
+            regX = (opcode&0x0F00)>>8;
+            regY = (opcode&0x00F0)>>4;
+            if(cpu->reg[regX]!=cpu->reg[regY])
+                cpu->pc+=2;
+            break;
+
         case 0x6000:
             printf("%x: set v%X to %x\n",opcode, (opcode&0x0F00)>>8, opcode&0x00FF);
             cpu->reg[(opcode&0x0F00)>>8] = opcode&0x00FF;
             break;
 
+        case 0x7000: //Addition, no cf
+            int reg = (opcode&0x0F00)>>8;
+            int adder = opcode&0x0FF;
+            int addee = cpu->reg[reg];
+            printf("%x: add %x to v%x(%x) = %x\n",opcode, adder, reg, addee, adder+addee);
+            cpu->reg[reg]+=opcode&0x0FF;
+
         case 0xA000: // ANNN: Sets I to the address NNN
             printf("move %x to idx\n", opcode&0x0FFF);
             cpu->idx = opcode & 0x0FFF;
             break;
-        case 0xD000: //DRAW SPRITE OMFG
-            int regx = (opcode&0x0F00)>>8;
-            int regy = (opcode&0x00F0)>4;
-            printf("%x: draw sprite at V%x: %d, V%x: %d, 8 wide and %d tall\n",opcode, regx, cpu->reg[regx], regy, cpu->reg[regy], opcode&0x00F);
-            break;
-    break;
+
+        //case 0xD000: //DRAW SPRITE OMFG
+        //    int regx = (opcode&0x0F00)>>8;
+        //    int regy = (opcode&0x00F0)>4;
+        //    printf("%x: draw sprite at V%x: %d, V%x: %d, 8 wide and %d tall\n",opcode, regx, cpu->reg[regx], regy, cpu->reg[regy], opcode&0x000F);
+
+        //    for(int i=0;i<(opcode&0x000F);i++){
+        //        int n = cpu->mem[i+cpu->idx];
+        //        while (n) {
+        //            if (n & 1)
+        //                printf("1");
+        //            else
+        //                printf("0");
+        //        
+        //            n >>= 1;
+        //        }
+        //        printf("\n");
+        //    }
+        //    break;
+        case 0xD000:		   
+        {
+          unsigned short x = cpu->reg[(opcode & 0x0F00) >> 8];
+          unsigned short y = cpu->reg[(opcode & 0x00F0) >> 4];
+          unsigned short height = opcode & 0x000F;
+          unsigned short pixel;
+         
+          cpu->reg[0xF] = 0;
+          for (int yline = 0; yline < height; yline++) {
+            pixel = cpu->mem[cpu->idx + yline];
+            for(int xline = 0; xline < 8; xline++) {
+              if((pixel & (0x80 >> xline)) != 0) {
+                if(cpu->pixels[(x + xline + ((y + yline) * 64))] == 1)
+                  cpu->reg[0xF] = 1;                                 
+                cpu->pixels[x + xline + ((y + yline) * 64)] ^= 1;
+              }
+            }
+          }
+         
+          //drawFlag = true;
+        }
+        break;
     default:
         printf("unhandled instruction 0x%x\n", opcode);
         return 0;

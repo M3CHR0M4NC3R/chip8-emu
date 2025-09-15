@@ -27,3 +27,4 @@ struct chip8CPU {
 struct chip8CPU* initCPU();
 int emulateCycle(struct chip8CPU *cpu);
 int loadGame(struct chip8CPU *cpu, char *file);
+void dumpCPU(struct chip8CPU *cpu);

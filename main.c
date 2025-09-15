@@ -3,15 +3,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void drawGFX(unsigned char pixels[64*32]);
+
 struct chip8CPU *cpu;
 typedef enum GameScreen { INIT=0, GAMEPLAY } GameScreen;
+const int scale = 10;
+const int screenWidth = 64*scale;
+const int screenHeight = 32*scale;
 
 int main(int argc, char *argv[])
 {
 
-    const int scale = 10;
-    const int screenWidth = 64*scale;
-    const int screenHeight = 32*scale;
 
 
     GameScreen currentScreen = INIT;
@@ -41,12 +43,6 @@ int main(int argc, char *argv[])
                 }else{
                     if(!loadGame(cpu, argv[1]))
                         return 1;
-                }
-                framesCounter++;
-
-
-
-                if(framesCounter>=120){
                     currentScreen = GAMEPLAY;
                 }
             //init game file
@@ -56,6 +52,7 @@ int main(int argc, char *argv[])
         {
             if(emulateCycle(cpu))
                 break;
+            //dumpCPU(cpu);
             return 1;
         }
         }
@@ -83,8 +80,8 @@ int main(int argc, char *argv[])
 
                 //3 draw to screen
 
-                    ClearBackground(WHITE);
-                    DrawText("no game loaded", 0, 0, 20, BLACK);
+                    //ClearBackground(BLACK);
+                    drawGFX(cpu->pixels);
 
 
                 break;
@@ -97,4 +94,24 @@ int main(int argc, char *argv[])
 
     free(cpu);
     return 0;
+}
+
+/*this function written by llm*/
+void drawGFX(unsigned char pixels[64*32]){
+    ClearBackground(BLACK);
+        
+        // Draw each pixel
+        for (int y = 0; y < 32; y++) {
+            for (int x = 0; x < 64; x++) {
+                if (pixels[x+(y*64)] > 0) { // If pixel is "on"
+                    DrawRectangle(
+                        x * scale, 
+                        y * scale, 
+                        scale, 
+                        scale, 
+                        WHITE
+                    );
+                }
+            }
+        }
 }
