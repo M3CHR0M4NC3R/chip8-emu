@@ -46,13 +46,21 @@ int emulateCycle(struct chip8CPU *cpu){
     switch(opcode & 0xF000){
         case 0x0000:
         {
-            switch(opcode & 0x000F)
+            switch(opcode & 0x00FF)
             {
-              case 0x0000: //00E0 clear screen
-                printf("clear screen instruction\n");
-                break;
+                case 0x00E0: //00E0 clear screen
+                    printf("%x: clearning gfx\n", opcode);
+                    for(int i=0;i<64*32;i++)
+                        cpu->pixels[i]=0;
+                    break;
+
+                case 0x00EE:
+                    cpu->sp--;
+                    cpu->pc = cpu->stack[cpu->sp];
+                    break;
+                
               default:
-                printf("unhandled instruction 0x%x\n", opcode);
+                printf("unhandled 0000 instruction 0x%x\n", opcode);
                 return 0;
             }
         break;
@@ -60,22 +68,21 @@ int emulateCycle(struct chip8CPU *cpu){
 
         case 0x1000: //GOTO
             cpu->pc=opcode&0x0FFF;
-
             return 1;
-        case 0x2000:
-            cpu->stack[cpu->sp] = pc;
-            cpu->sp++;
-            pc = opcode & 0x0FFF;
-        break;
 
+        case 0x2000:
+            cpu->stack[cpu->sp] = cpu->pc;
+            cpu->sp++;
+            cpu->pc = opcode & 0x0FFF;
+            return 1;
 
         case 0x3000: //conditional skip next instruction (true)
-            if (cpu->reg[(opcode&0x0F00)>>8]==(opcode&0x00F))
+            if (cpu->reg[(opcode&0x0F00)>>8]==(opcode&0x00FF))
                 cpu->pc+=2;
             break;
 
         case 0x4000: //conditional skip next instruction (false)
-            if (!(cpu->reg[(opcode&0x0F00)>>8]==(opcode&0x00F)))
+            if (!(cpu->reg[(opcode&0x0F00)>>8]==(opcode&0x00FF)))
                 cpu->pc+=2;
             break;
 
@@ -94,19 +101,62 @@ int emulateCycle(struct chip8CPU *cpu){
             break;
 
         case 0x6000:
-            printf("%x: set v%X to %x\n",opcode, (opcode&0x0F00)>>8, opcode&0x00FF);
             cpu->reg[(opcode&0x0F00)>>8] = opcode&0x00FF;
             break;
 
         case 0x7000: //Addition, no cf
-            int reg = (opcode&0x0F00)>>8;
-            int adder = opcode&0x0FF;
-            int addee = cpu->reg[reg];
-            printf("%x: add %x to v%x(%x) = %x\n",opcode, adder, reg, addee, adder+addee);
-            cpu->reg[reg]+=opcode&0x0FF;
+            regX = (opcode&0x0F00)>>8;
+            cpu->reg[regX]+=opcode&0x0FF;
+            break;
+
+        case 0x8000:
+            regX = (opcode&0x0F00)>>8;
+            regY = (opcode&0x00F0)>>4;
+            switch(opcode&0x000F)
+            {
+                case 0x0000: //copy reg y into reg x
+                    cpu->reg[regX]=cpu->reg[regY];
+                    break;
+
+                case 0x0001:
+                        cpu->reg[regX]|=cpu->reg[regY];
+                        break;
+                
+                case 0x0002:
+                        cpu->reg[regX]&=cpu->reg[regY];
+                        break;
+
+                case 0x0003:
+                        cpu->reg[regX]^=cpu->reg[regY];
+                        break;
+
+                case 0x0004: //TODO VF flag
+                        cpu->reg[regX]+=cpu->reg[regY];
+                        break;
+
+                case 0x0005: //TODO VF flag
+                        cpu->reg[regX]-=cpu->reg[regY];
+                        break;
+
+                case 0x0006: //TODO VF flag
+                        cpu->reg[regX]>>=1;
+                        break;
+
+                case 0x0007:
+                        cpu->reg[regX]=(cpu->reg[regY]-cpu->reg[regX]);
+                        break;
+
+                case 0x000E:
+                        cpu->reg[regX]<<=1;
+                        break; 
+
+                default:
+                    printf("unhandled instruction 0x%x\n", opcode);
+                    return 0;
+            }
+            break;
 
         case 0xA000: // ANNN: Sets I to the address NNN
-            printf("move %x to idx\n", opcode&0x0FFF);
             cpu->idx = opcode & 0x0FFF;
             break;
 
@@ -129,27 +179,37 @@ int emulateCycle(struct chip8CPU *cpu){
         //    }
         //    break;
         case 0xD000:		   
-        {
-          unsigned short x = cpu->reg[(opcode & 0x0F00) >> 8];
-          unsigned short y = cpu->reg[(opcode & 0x00F0) >> 4];
-          unsigned short height = opcode & 0x000F;
-          unsigned short pixel;
+            unsigned short x = cpu->reg[(opcode & 0x0F00) >> 8];
+            unsigned short y = cpu->reg[(opcode & 0x00F0) >> 4];
+            unsigned short height = opcode & 0x000F;
+            unsigned short pixel;
          
-          cpu->reg[0xF] = 0;
-          for (int yline = 0; yline < height; yline++) {
-            pixel = cpu->mem[cpu->idx + yline];
-            for(int xline = 0; xline < 8; xline++) {
-              if((pixel & (0x80 >> xline)) != 0) {
-                if(cpu->pixels[(x + xline + ((y + yline) * 64))] == 1)
-                  cpu->reg[0xF] = 1;                                 
-                cpu->pixels[x + xline + ((y + yline) * 64)] ^= 1;
-              }
+            cpu->reg[0xF] = 0;
+            for (int yline = 0; yline < height; yline++) {
+                pixel = cpu->mem[cpu->idx + yline];
+                for(int xline = 0; xline < 8; xline++) {
+                    if((pixel & (0x80 >> xline)) != 0) {
+                        if(cpu->pixels[(x + xline + ((y + yline) * 64))] == 1)
+                            cpu->reg[0xF] = 1;                                 
+                        cpu->pixels[x + xline + ((y + yline) * 64)] ^= 1;
+                    }
+                }
             }
-          }
          
-          //drawFlag = true;
-        }
-        break;
+            //drawFlag = true;
+            break;
+
+        case 0xF000:
+            switch(opcode&0x00FF){
+                case 0x0065:
+                    regX = (opcode&0x0F00)>>8;
+                    for(int i = 0;i<regX;i++)
+                        cpu->reg[i]=cpu->mem[(cpu->idx)+i];
+                    break;
+
+            }
+            break;
+
     default:
         printf("unhandled instruction 0x%x\n", opcode);
         return 0;
