@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <errno.h>
 
 struct chip8CPU* initCPU(){
@@ -82,13 +83,19 @@ int emulateCycle(struct chip8CPU *cpu){
             break;
 
         case 0x4000: //conditional skip next instruction (false)
-            if (!(cpu->reg[(opcode&0x0F00)>>8]==(opcode&0x00FF)))
+            regX = (opcode&0x0F00)>>8;
+            if(regX==15)
+                printf("checking vF!\n");
+
+            if (cpu->reg[(opcode&0x0F00)>>8]!=(opcode&0x00FF))
                 cpu->pc+=2;
             break;
 
         case 0x5000:
             regX = (opcode&0x0F00)>>8;
             regY = (opcode&0x00F0)>>4;
+            if(regX==15||regY==15)
+                printf("checking vF!\n");
             if(cpu->reg[regX]==cpu->reg[regY])
                 cpu->pc+=2;
             break;
@@ -110,6 +117,7 @@ int emulateCycle(struct chip8CPU *cpu){
             break;
 
         case 0x8000:
+            unsigned char setVF=0;
             regX = (opcode&0x0F00)>>8;
             regY = (opcode&0x00F0)>>4;
             switch(opcode&0x000F)
@@ -130,24 +138,37 @@ int emulateCycle(struct chip8CPU *cpu){
                         cpu->reg[regX]^=cpu->reg[regY];
                         break;
 
-                case 0x0004: //TODO VF flag
+                case 0x0004:
+                        if (cpu->reg[regX] > 0 && cpu->reg[regY] > UCHAR_MAX - cpu->reg[regX])
+                            setVF=1;
                         cpu->reg[regX]+=cpu->reg[regY];
+                        cpu->reg[0xF]=setVF;
                         break;
 
-                case 0x0005: //TODO VF flag
+                case 0x0005:
+                        if(cpu->reg[regX]>=cpu->reg[regY])
+                            setVF=1;
                         cpu->reg[regX]-=cpu->reg[regY];
+                        cpu->reg[0xF]=setVF;
                         break;
 
-                case 0x0006: //TODO VF flag
+                case 0x0006://TODO check quirks
+                        setVF=cpu->reg[regX] & 0x01;
                         cpu->reg[regX]>>=1;
+                        cpu->reg[0xF]=setVF;
                         break;
 
                 case 0x0007:
+                        if(cpu->reg[regY]>=cpu->reg[regX])
+                            setVF=1;
                         cpu->reg[regX]=(cpu->reg[regY]-cpu->reg[regX]);
+                        cpu->reg[0xF]=setVF;
                         break;
 
-                case 0x000E:
+                case 0x000E://TODO check quirks
+                        setVF=(cpu->reg[regX] & 0x80) >> 7;
                         cpu->reg[regX]<<=1;
+                        cpu->reg[0xF]=setVF;
                         break; 
 
                 default:
