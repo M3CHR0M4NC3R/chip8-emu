@@ -17,6 +17,8 @@ int main(int argc, char *argv[])
 
 
     GameScreen currentScreen = INIT;
+    InitAudioDevice();
+    Sound beep = LoadSound("untitled.ogg");
     InitWindow(screenWidth, screenHeight, "Chip8 Emulator");
 
     SetTargetFPS(60);
@@ -41,15 +43,22 @@ int main(int argc, char *argv[])
                 if(cpu==NULL){
                     cpu = initCPU();
                 }else{
+            //init game file
                     if(!loadGame(cpu, argv[1]))
                         return 1;
                     currentScreen = GAMEPLAY;
                 }
-            //init game file
             break;
 
         case GAMEPLAY:
         {
+            if(cpu->sound_timer>0){
+                PlaySound(beep);
+                cpu->sound_timer--;
+            }else
+                StopSound(beep);
+            if(cpu->delay_timer>0)
+                cpu->delay_timer--;
             if(emulateCycle(cpu))
                 break;
             //dumpCPU(cpu);

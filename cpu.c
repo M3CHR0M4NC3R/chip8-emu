@@ -199,24 +199,6 @@ int emulateCycle(struct chip8CPU *cpu){
             cpu->idx = opcode & 0x0FFF;
             break;
 
-        //case 0xD000: //DRAW SPRITE OMFG
-        //    int regx = (opcode&0x0F00)>>8;
-        //    int regy = (opcode&0x00F0)>4;
-        //    printf("%x: draw sprite at V%x: %d, V%x: %d, 8 wide and %d tall\n",opcode, regx, cpu->reg[regx], regy, cpu->reg[regy], opcode&0x000F);
-
-        //    for(int i=0;i<(opcode&0x000F);i++){
-        //        int n = cpu->mem[i+cpu->idx];
-        //        while (n) {
-        //            if (n & 1)
-        //                printf("1");
-        //            else
-        //                printf("0");
-        //        
-        //            n >>= 1;
-        //        }
-        //        printf("\n");
-        //    }
-        //    break;
         case 0xD000:		   
             unsigned short x = cpu->reg[(opcode & 0x0F00) >> 8];
             unsigned short y = cpu->reg[(opcode & 0x00F0) >> 4];
@@ -238,8 +220,27 @@ int emulateCycle(struct chip8CPU *cpu){
             //drawFlag = true;
             break;
 
+        case 0xE000:
+            switch(opcode&0x00FF){
+                case 0x00a1: //TODO if key == vX
+                    break;
+                case 0x009E: //TODO if key != vX
+                    break;
+            }
+            break;
+
         case 0xF000:
             switch(opcode&0x00FF){
+                case 0x0018:
+                    regX = (opcode&0x0F00)>>8;
+                    cpu->sound_timer=regX;
+                    break;
+
+                case 0x0015:
+                    regX = (opcode&0x0F00)>>8;
+                    cpu->delay_timer=regX;
+                    break;
+
                 case 0x0065:
                     regX = (opcode&0x0F00)>>8;
                     for(int i = 0;i<=regX;i++)
