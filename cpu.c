@@ -57,6 +57,8 @@ int emulateCycle(struct chip8CPU *cpu){
     int pc = cpu->pc;
     int opcode = cpu->mem[pc] << 8 | cpu->mem[pc + 1];
     int regY,regX;
+    unsigned short x,y;
+    unsigned char setVF;
     //cpu->opcode = opcode;
     //printf("%x %x\n",pc, opcode);
     //if (pc==0x200)
@@ -68,7 +70,6 @@ int emulateCycle(struct chip8CPU *cpu){
             switch(opcode & 0x00FF)
             {
                 case 0x00E0: //00E0 clear screen
-                    printf("%x: clearning gfx\n", opcode);
                     for(int i=0;i<64*32;i++)
                         cpu->pixels[i]=0;
                     break;
@@ -77,9 +78,13 @@ int emulateCycle(struct chip8CPU *cpu){
                     cpu->sp--;
                     cpu->pc = cpu->stack[cpu->sp];
                     break;
+
+                case 0x0000:
+                    //TODO why am I seeing this instruction?
+                    break;
                 
               default:
-                printf("unhandled 0000 instruction 0x%x\n", opcode);
+                printf("unhandled instruction 0x%x\n", opcode);
                 return 0;
             }
         break;
@@ -102,9 +107,6 @@ int emulateCycle(struct chip8CPU *cpu){
 
         case 0x4000: //conditional skip next instruction (false)
             regX = (opcode&0x0F00)>>8;
-            if(regX==15)
-                printf("checking vF!\n");
-
             if (cpu->reg[(opcode&0x0F00)>>8]!=(opcode&0x00FF))
                 cpu->pc+=2;
             break;
@@ -112,8 +114,6 @@ int emulateCycle(struct chip8CPU *cpu){
         case 0x5000:
             regX = (opcode&0x0F00)>>8;
             regY = (opcode&0x00F0)>>4;
-            if(regX==15||regY==15)
-                printf("checking vF!\n");
             if(cpu->reg[regX]==cpu->reg[regY])
                 cpu->pc+=2;
             break;
@@ -135,7 +135,7 @@ int emulateCycle(struct chip8CPU *cpu){
             break;
 
         case 0x8000:
-            unsigned char setVF=0;
+            setVF=0;
             regX = (opcode&0x0F00)>>8;
             regY = (opcode&0x00F0)>>4;
             switch(opcode&0x000F)
@@ -199,9 +199,14 @@ int emulateCycle(struct chip8CPU *cpu){
             cpu->idx = opcode & 0x0FFF;
             break;
 
+        case 0xC000:
+            regX=(opcode&0xF00)>>8;
+            cpu->reg[regX]=rand()&(opcode&0x00FF);
+            break;
+
         case 0xD000:		   
-            unsigned short x = cpu->reg[(opcode & 0x0F00) >> 8];
-            unsigned short y = cpu->reg[(opcode & 0x00F0) >> 4];
+            x = cpu->reg[(opcode & 0x0F00) >> 8];
+            y = cpu->reg[(opcode & 0x00F0) >> 4];
             unsigned short height = opcode & 0x000F;
             unsigned short pixel;
          
@@ -231,9 +236,19 @@ int emulateCycle(struct chip8CPU *cpu){
 
         case 0xF000:
             switch(opcode&0x00FF){
+                case 0x0007:
+                    regX = (opcode&0x0F00)>>8;
+                    cpu->reg[regX]=cpu->delay_timer;
+                    break;
+
                 case 0x0018:
                     regX = (opcode&0x0F00)>>8;
                     cpu->sound_timer=regX;
+                    break;
+
+                case 0x0029:
+                    regX = (opcode&0x0F00)>>8;
+                    cpu->idx=cpu->reg[regX]*5;
                     break;
 
                 case 0x0015:
@@ -270,6 +285,10 @@ int emulateCycle(struct chip8CPU *cpu){
 
                 case 0x001E:
                     cpu->idx += cpu->reg[(opcode&0x0F00)>>8];
+                    break;
+
+                case 0x000A:
+                    //TODO wait for input
                     break;
 
                 default:

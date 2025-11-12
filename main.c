@@ -21,10 +21,8 @@ int main(int argc, char *argv[])
     Sound beep = LoadSound("untitled.ogg");
     InitWindow(screenWidth, screenHeight, "Chip8 Emulator");
 
-    SetTargetFPS(60);
-    int framesCounter = 0;
-    int cpuInit = 0;
-    int gameInit = 0;
+    SetTargetFPS(700);
+    unsigned short framesCounter = 0;
     struct chip8CPU *cpu = NULL;
     if (argc<1){
         printf("You have to specify a file\n");
@@ -52,16 +50,18 @@ int main(int argc, char *argv[])
 
         case GAMEPLAY:
         {
-            if(cpu->sound_timer>0){
+            if(cpu->sound_timer>=0x01){
                 PlaySound(beep);
-                cpu->sound_timer--;
+                if (framesCounter%60==0)
+                    cpu->sound_timer--;
             }else
                 StopSound(beep);
             if(cpu->delay_timer>0)
-                cpu->delay_timer--;
+                if (framesCounter%60==0)
+                    cpu->delay_timer--;
+            framesCounter++;
             if(emulateCycle(cpu))
                 break;
-            //dumpCPU(cpu);
             return 1;
         }
         }
@@ -99,6 +99,8 @@ int main(int argc, char *argv[])
         }
         EndDrawing();
     }
+    CloseAudioDevice();
+    UnloadSound(beep);
     CloseWindow();        // Close window and OpenGL context
 
     free(cpu);
