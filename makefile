@@ -11,7 +11,7 @@ TARGET := chip8
 # Platform-specific settings
 ifeq ($(UNAME_S),Linux)
     CC := gcc
-    CFLAGS += -D LINUX
+    CFLAGS += -D LINUX -lraylib
     LDFLAGS := -lm
 endif
 ifeq ($(UNAME_S),Darwin)
